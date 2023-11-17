@@ -1,6 +1,10 @@
 from bs4 import BeautifulSoup
-from bs4.element import Tag, NavigableString
-from PIL import ImageFont
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from PIL import Image
+from os import path
+import time
+import io
 
 # Read HTML content from a file
 with open("newspapers/nytimes_direct_download.html", "r", encoding="utf-8") as file:
@@ -30,6 +34,47 @@ with open("newspapers/nytimes_direct_download.html", "r", encoding="utf-8") as f
 soup = BeautifulSoup(html_content, 'html.parser')
 
 
+def capture_full_page_screenshot(file_location, output_file_location):
+    chrome_options = Options()
+    chrome_options.add_argument("--disable-javascript")
+
+    driver = webdriver.Chrome(options=chrome_options)
+    driver.get(file_location)
+
+    # Get the total height of the webpage
+    total_height = driver.execute_script(
+        "return Math.max( document.body.scrollHeight, document.body.offsetHeight, document.documentElement.clientHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight);")
+
+    # Set the window size to the total height to capture the entire page
+    driver.set_window_size(driver.get_window_size()['width'], total_height)
+
+    # Capture multiple screenshots and stitch them together
+    screenshots = []
+    current_height = 0
+    while current_height < total_height:
+        # Take a screenshot of the current view
+        screenshot = driver.get_screenshot_as_png()
+        screenshots.append(screenshot)
+
+        # Scroll down to the next section of the page
+        current_height += driver.execute_script("return window.innerHeight;")
+        driver.execute_script(f"window.scrollTo(0, {current_height});")
+
+    # Stitch the screenshots together into a single image
+    full_page_screenshot = Image.open(io.BytesIO(screenshots[0]))
+    for screenshot in screenshots[1:]:
+        image = Image.open(io.BytesIO(screenshot))
+        full_page_screenshot.paste(image, (0, current_height))
+        current_height += image.height
+
+    # Save the final full-page screenshot
+    full_page_screenshot.save(output_file_location)
+
+    # driver.save_screenshot(output_file_location)
+    # driver.save_screenshot('./newspapers/output.png')
+    # driver.quit()
+
+
 def addHiddenStyleToElement(element):
     # Check if the element already has a "style" attribute
     if 'style' in element.attrs:
@@ -50,7 +95,7 @@ def hide_english_text_recursive(element):
         # Check if the element has English text directly inside (not in children)
         # Check if the tag is not a script or style tag and not an img tag (exclude code and images)
         if element.name.lower() not in ['script', 'style'] and element.name.lower() != 'img':
-            if (has_english_text(element.get_text()) and not any(child.name for child in element.children if child.name)) or element.get_text().strip() == 'LIVE':
+            if (has_english_text(element.get_text()) and not any(child.name for child in element.children if child.name)):
                 addHiddenStyleToElement(element)
 
     # Recursively call the function for all child elements
@@ -66,3 +111,8 @@ hide_english_text_recursive(soup.body)
 # The output is good, but we need to disable the Javascript from running which re-injects the text that we are hiding
 with open("newspapers/output.html", "w") as output_file:
     output_file.write(soup.prettify())
+
+file_location = path.abspath("newspapers/output.html")
+
+capture_full_page_screenshot(
+    "file:///" + file_location, './newspapers/output-screenshots.png')

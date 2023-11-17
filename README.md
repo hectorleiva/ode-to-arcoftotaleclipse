@@ -25,3 +25,10 @@ The process encompasses the following changes:
 * The newspaper's internet home-page is now what was previously the newspapers' printed front-page.
 * The end result will be a digital copy with hard-coded dimensions of the newspaper's largest possible representation of their internet home-page.
 * This method in which these digital copies will be generated, will be completely automated by a custom computer program.
+
+### Start
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
