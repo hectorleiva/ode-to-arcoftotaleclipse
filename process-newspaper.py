@@ -1,7 +1,6 @@
 from bs4 import BeautifulSoup
 from bs4.element import Tag, NavigableString
-from PIL import Image, ImageDraw, ImageFont
-import re
+from PIL import ImageFont
 
 # Read HTML content from a file
 with open("newspapers/nytimes_direct_download.html", "r", encoding="utf-8") as file:
@@ -32,51 +31,39 @@ with open("newspapers/nytimes_direct_download.html", "r", encoding="utf-8") as f
 soup = BeautifulSoup(html_content, 'html.parser')
 
 
-def measure_text(text, font):
-    image = Image.new('RGB', (1, 1), (255, 255, 255)
-                      )  # Create a 1x1 white image
-    draw = ImageDraw.Draw(image)
-    width, height = draw.textsize(text, font)
-    return width, height
+def addHiddenStyleToElement(element):
+    # Check if the element already has a "style" attribute
+    if 'style' in element.attrs:
+        # Append the CSS rule to the existing styles
+        element['style'] += '; visibility: hidden;'
+    else:
+        # Add the CSS rule "visibility: hidden" as a new style attribute
+        element['style'] = 'visibility: hidden;'
 
 
-def process_element(element, font):
-    if isinstance(element, NavigableString):
-        # If it's a text element within an HTML tag, measure its text and record the width and height
-        if (
-            isinstance(element.parent, Tag)
-        ):
-            text = element.strip()
-            if (len(text) > 0):
-                width, height = measure_text(text, font)
-                # Create a CSS rule to set the width and height for the element
-                css_rule = f"width: {width}px; height: {height}px;"
+def hide_english_text_recursive(element):
+    # Function to check if a string contains English text (simple check for illustration)
+    def has_english_text(s):
+        # You may want to implement a more sophisticated check based on your requirements
+        return any(char.isalpha() or char.isdigit() for char in s)
 
-                # Apply the CSS rule inline with the HTML tag
-                if 'style' in element.parent.attrs:
-                    current_styles = element.parent.attrs.get('style')
-                    # Check if the style attribute do not already exist
-                    if re.search(r'width.*:.*px', current_styles) is None:
-                        existing_style = element.parent['style']
-                        element.parent['style'] = f"{existing_style} {css_rule}"
-                else:
-                    # If not, set the new CSS rule as the style attribute
-                    element.parent['style'] = css_rule
+    if element.name:
+        # Check if the element has English text directly inside (not in children)
+        # Check if the tag is not a script or style tag and not an img tag (exclude code and images)
+        if element.name.lower() not in ['script', 'style'] and element.name.lower() != 'img':
+            if has_english_text(element.get_text()) and not any(child.name for child in element.children if child.name):
+                addHiddenStyleToElement(element)
 
-                element.replace_with('')  # Remove the text content
-                print(f"Text: '{text}', Width: {width}px, Height: {height}px")
-    elif isinstance(element, Tag):
-        # If it's a tag (element)
-        for child in element.contents:
-            process_element(child, font)
+    # Recursively call the function for all child elements
+    for child in element.children:
+        if child.name:
+            hide_english_text_recursive(child)
 
-
-# Create a Pillow font for text measurement (you can customize the font)
-font = ImageFont.truetype("fonts/Arial.ttf", 16)
 
 # Process the body element
-body = soup.find('body')
-process_element(body, font)
+hide_english_text_recursive(soup.body)
 
+
+# The output is good, but we need to disable the Javascript from running which re-injects the text that we are hiding
 with open("newspapers/output.html", "w") as output_file:
     output_file.write(soup.prettify())
