@@ -7,24 +7,23 @@ with open("newspapers/nytimes_direct_download.html", "r", encoding="utf-8") as f
     html_content = file.read()
 
 # html_content = """
-# <!DOCTYPE html>
-# <html>
-# <head>
-#     <title>Sample Page</title>
-# </head>
-# <body>
-#     <div>
-#         <p>This is some text.</p>
-#         <img src="image.jpg" alt="An image">
-#         <p>More text here.</p>
-#         <span>Just text</span>
-#         <div>
-#             <p>Inner text</p>
+# <span class="css-nch2d">
+#     LIVE
+#     <time aria-hidden="true" class="css-16lxk39" datetime="2023-10-28T19:41:21.338Z">
+#         <div class="css-ki347z">
+#             <span class="css-1stvlmo" data-time="abs" style="visibility: hidden;">
+#             Oct. 28, 2023, 3:41 p.m. ET
+#             </span>
+#             <span class="css-d2btor" data-time="rel" style="visibility: hidden;">
+#             Just now
+#             </span>
 #         </div>
-#     </div>
-#     <ul class="css-1xhq0o5"><li class="summary-class" style="width: 694px; height: 72px;">With Israeli troops now on the ground in Gaza, Prime Minister Benjamin Netanyahu said in a televised speech that it would be a “long and difficult” campaign.</li><li class="summary-class" style="width: 687px; height: 53px;">Hamas’s armed wing said its forces were fighting Israeli soldiers inside the enclave, but Israeli officials have not publicly called the push an invasion.</li></ul>
-# </body>
-# </html>
+#     </time>
+#     <span aria-live="polite" class="css-1dv1kvn" style="visibility: hidden;">
+#         Just
+#         now
+#     </span>
+# </span>
 # """
 
 # Load the HTML content using BeautifulSoup
@@ -51,7 +50,7 @@ def hide_english_text_recursive(element):
         # Check if the element has English text directly inside (not in children)
         # Check if the tag is not a script or style tag and not an img tag (exclude code and images)
         if element.name.lower() not in ['script', 'style'] and element.name.lower() != 'img':
-            if has_english_text(element.get_text()) and not any(child.name for child in element.children if child.name):
+            if (has_english_text(element.get_text()) and not any(child.name for child in element.children if child.name)) or element.get_text().strip() == 'LIVE':
                 addHiddenStyleToElement(element)
 
     # Recursively call the function for all child elements
